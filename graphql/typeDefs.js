@@ -6,7 +6,7 @@ module.exports = gql`
     nickname: String
     email: String
     password: String
-    token: String,
+    token: String
     createdAt: String
   }
 
