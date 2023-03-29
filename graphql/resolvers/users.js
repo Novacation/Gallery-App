@@ -1,5 +1,5 @@
 const { ApolloError } = require('apollo-server-errors')
-const { hash } = require('bcryptjs')
+const { hash, compare } = require('bcryptjs')
 
 const { sign } = require('jsonwebtoken')
 const User = require('../../models/User')
@@ -48,6 +48,41 @@ module.exports = {
       return {
         id: res.id,
         ...res._doc
+      }
+    },
+
+    async loginUser(_, { loginInput: { email, password } }) {
+      const oldUser = await User.findOne({ email })
+
+      if (!oldUser) {
+        throw new ApolloError(
+          `User with the email "${email}" doesn't exists!`,
+          'USER_DOESNT_EXISTS'
+        )
+      }
+
+      const encryptedPassword = oldUser.password
+      const comparisonResult = await compare(password, encryptedPassword)
+
+      if (!comparisonResult) {
+        throw new ApolloError(`Invalid credentials`, 'INVALID_CREDENTIALS')
+      }
+
+      //create jwt and attatch to the model built
+      const token = sign(
+        {
+          user_id: oldUser._id,
+          email
+        },
+        process.env.JWT_SECRET,
+        { expiresIn: '24h' }
+      )
+
+      await User.updateOne({ email }, { token })
+
+      return {
+        id: oldUser.id,
+        ...oldUser._doc
       }
     }
   },
